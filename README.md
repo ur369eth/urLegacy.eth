@@ -35,7 +35,7 @@ The contract charges $1.00 from 1 to 10 days; $2 from 10 to 20 days and $3 from 
 
 (XII) The Sign Key is always required before signing a Tx as it helps with preventing theft or any type of exploitation.
 
-Example: (If it would be possible to activate a contracrt without the Sign Key), if the user activates a contract and a bad actor gains access to their private keys, the bad actor then can (A) withdraw the funds from the contract to the user/victim's wallet (that they have taken control over) and then send the funds to an address they control; (B) the bad actor can change the designated address and input an address they control so the funds would be received, ultimately, into the address they control.
+Example: (If it would be possible to activate a contract without the Sign Key), if the user activates a contract and a bad actor gains access to their private keys, the bad actor then can (A) withdraw the funds from the contract to the user/victim's wallet (that they have taken control over) and then send the funds to an address they control; (B) the bad actor can change the designated address and input an address they control so the funds would be received, ultimately, into the address they control.
 
 Thus, the Sign Key stops that from happening as for the bad actor to be able to withdraw, or change the designated address they must have and input also the Sign Key. Without the Sign Key they have no control over the funds, but the legit owner does.
 
