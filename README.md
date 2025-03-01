@@ -1,6 +1,6 @@
 # urLegacy.eth
 
-\***\*How activation works:\*\***
+***How activation/subscription works:**
 
 (I) The user connects wallet and clicks on the "Program" button corresponding to the token they wish to be sent in the future to the designated crypto wallet address they input (heir, entity, AI agent, et cetera).
 
