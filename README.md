@@ -1,6 +1,6 @@
 # urLegacy.eth
 
-***How activation/subscription works:**
+**\*How activation/subscription works:**
 
 (I) The user connects wallet and clicks on the "Program" button corresponding to the token they wish to be sent in the future to the designated crypto wallet address they input (heir, entity, AI agent, et cetera).
 
@@ -12,10 +12,11 @@ User pays $369 in ETH or in any stablecoin (DAI, GHO, USDC, USDT, etc) to activa
 
 (IV) The user enters the subscription days (i.e., amount of days funds will be inside the contract). The maximum amount of days is 369 days.
 
-Note: 
-* When the subscription time comes to an end, the funds within the contract are sent to the wallet address designated by the user. 
+Note:
 
-* If the user reactivates the contract before the time-subscription ends, then the funds remain inside the contract and in their control, thus unds are not sent to designated address. The contract is reactivated by paying the corresponding fee for the time subscription.
+- When the subscription time comes to an end, the funds within the contract are sent to the wallet address designated by the user.
+
+- If the user reactivates the contract before the time-subscription ends, then the funds remain inside the contract and in their control, thus unds are not sent to designated address. The contract is reactivated by paying the corresponding fee for the time subscription.
 
 The contract charges $1.00 from 1 to 10 days; $2 from 10 to 20 days and $3 from 20 to 30 days. After 30 days the contract charges $1 per day; however only up to 227 days the fee is charged... All rest of days selected from 227 days to 369 days are free of charge.
 
@@ -40,3 +41,7 @@ Example: (If it would be possible to activate a contract without the Sign Key), 
 Thus, the Sign Key stops that from happening as for the bad actor to be able to withdraw, or change the designated address they must have and input also the Sign Key. Without the Sign Key they have no control over the funds, but the legit owner does.
 
 Thus, if by any chance, a bad actor would have gained access to the wallet's private keys of the user, the bad actor still would not be able to compromise/steal the user's funds.
+
+### Deployed contract address on etherscan mainnet
+
+urLegacyContract: [https://etherscan.io/address/0xB09c706356c60eBDc3a09d20C74dFa6135e54693#code]

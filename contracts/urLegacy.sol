@@ -6,12 +6,13 @@ import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol"; // Import EnumerableSet from OpenZeppelin
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract urLegacy is ReentrancyGuard, AutomationCompatibleInterface {
+contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     // ========================
@@ -121,12 +122,11 @@ contract urLegacy is ReentrancyGuard, AutomationCompatibleInterface {
 
     // Global Data
     // ========================
-    address payable public owner;
-    address public feeReceiver1 = 0xB9EdDb5F17E468c5FC1BA149Cbce7bF5A257ee1F; // 43%
-    address public feeReceiver2 = 0x577d5A0d6F8584d2D426F17Daf850d68F1709A52; // 43%
+    address public feeReceiver1 = 0x3162210648CC77ba625bC091c834BDd730fDB9a6; // 43%
+    address public feeReceiver2 = 0xD6A43D33dEbE97E86f10870c95BBE45453C0ff79; // 43%
     address public keeperFeeReceiver =
-        0x117820c05a998Cadfdff6f2C82DfC3c5Ec4306Db; // 4%
-    address public devAddress = 0xFaf71ced6d5829dfdaA157eb289D7e116907045E; // 10%
+        0xe4A8855fbF1f49412f63EC4e2E7B487AE3304f79; // 4%
+    address public devAddress = 0x5F7B6950e5A173dDAc168b12c1Fa7fBAFb78e414; // 10%
     uint256 public gasFeeReceiverPercent = 43; // 43%
     uint256 public keeperFeeReceiverPercent = 4; // 4%
     uint256 public devAddressPercent = 10; // 10%
@@ -183,22 +183,8 @@ contract urLegacy is ReentrancyGuard, AutomationCompatibleInterface {
 
     // Logic Implementation
     // ========================
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
-        _;
-    }
 
-    constructor(
-        address _priceFeedAddress,
-        address[] memory _allowedStableCoins
-    ) {
-        owner = payable(msg.sender);
-
-        // Initialize allowed stablecoins
-        for (uint i = 0; i < _allowedStableCoins.length; i++) {
-            allowedStablecoins.add(_allowedStableCoins[i]);
-        }
-
+    constructor(address _priceFeedAddress) Ownable(msg.sender) {
         priceFeed = AggregatorV3Interface(_priceFeedAddress); // Chainlink ETH/USD price feed
     }
 
