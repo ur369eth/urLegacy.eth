@@ -41,7 +41,3 @@ Example: (If it would be possible to activate a contract without the Sign Key), 
 Thus, the Sign Key stops that from happening as for the bad actor to be able to withdraw, or change the designated address they must have and input also the Sign Key. Without the Sign Key they have no control over the funds, but the legit owner does.
 
 Thus, if by any chance, a bad actor would have gained access to the wallet's private keys of the user, the bad actor still would not be able to compromise/steal the user's funds.
-
-### Deployed contract address on etherscan mainnet
-
-urLegacyContract: [https://etherscan.io/address/0xB09c706356c60eBDc3a09d20C74dFa6135e54693#code]
