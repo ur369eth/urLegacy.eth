@@ -32,9 +32,9 @@ Note:
 
 (X) In the 'Subscription' tab it is displayed for the user:
 
-- The susbcription ID
+- The subscription ID
 - A green 'Active' status which indicates the contract is active/operational.
-- The expiry date and time of the contract/susbcription.
+- The expiry date and time of the contract/subscription.
 - The asset being programmed and the amount to be sent in the future.
 - The beneficiary's name (if the user opted to input it).
 - The designated wallet address where the funds shall be sent to upon contract expiration.
