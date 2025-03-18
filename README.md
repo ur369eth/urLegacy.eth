@@ -1,6 +1,6 @@
-# urLegacy.eth
+# urLegacy.eth -- Functionality is decribed in Code
 
-**\*How activation/subscription works:**
+*\*How activation/subscription works:**
 
 (I) The user connects wallet and clicks on the 'Program' button corresponding to the token they wish to be sent (in the future) to the designated wallet address (heir, entity, AI agent, et cetera).
 
