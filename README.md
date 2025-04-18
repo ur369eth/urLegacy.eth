@@ -18,7 +18,7 @@ Note:
 
 - If the user reactivates the contract before the time-subscription ends, then the funds remain within the contract and in under the user's control, thus funds are sent to designated address upon new expiry date entered by the user.
 
-- The contract charges $1.00 from 1 to 10 days; $2 from 10 to 20 days and $3 from 20 to 30 days. After 30 days the contract charges $1 per day; however only up to 227 days the fee is charged... The rest of days selected from 227 days to 369 days are free of charge. Thus, the total amount charged is $200 for the 369 days subscription.
+- The contract charges $1.00 from 1 to 10 days; $2 from 11 to 20 days and $3 from 21 to 30 days. After 30 days the contract charges $0.369 per day; thus the maximum charge is $128.091, if the subscription is for 369 days.
 
 (V) The user enters the amount they wish to be sent to the heir/designated address.
 
@@ -42,3 +42,7 @@ Note:
 - Note: The Sign Key is always required for the options cited above and before signing a transaction as it helps with preventing theft or any type of exploitation.
 
 (XI) When the susbcription/time ends, an 'Expired' status (in red) shows in the 'Subscription' tab indicating that (A) the contract has sent the funds to the designated wallet address, or (B) the user withdrew to their own wallet, and the duration of the contract came to a term and it was not renewed.
+
+(XII) If the user's address minted the ur369NFT they can get a 36.9% reimbursement (refund) of the subscription fee.
+
+Important note: To expedite the 36.9% refund of the paid-fee-amount, the user must complete this task: send the message /reimbursement (or /refund) via any of the ur369 social media channels.
