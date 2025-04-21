@@ -43,6 +43,16 @@ Note:
 
 (XI) When the susbcription/time ends, an 'Expired' status (in red) shows in the 'Subscription' tab indicating that (A) the contract has sent the funds to the designated wallet address, or (B) the user withdrew to their own wallet, and the duration of the contract came to a term and it was not renewed.
 
-(XII) If the user's address minted the ur369NFT they can get a 36.9% reimbursement (refund) of the subscription fee.
+(XII) If a user's crypto wallet address minted the ur369NFT, then that crypto wallet address can get a 36.9% reimbursement (refund) of the subscription fee.
 
-Important note: To expedite the 36.9% refund of the paid-fee-amount, the user must complete this task: send the message /reimbursement (or /refund) via any of the ur369 social media channels.
+Important:
+
+(1) To make the 36.9% refund happen and to expedite it, the user must complete the following task: 
+
+(A) Connect the corresponding crypto wallet address to ursign.eth.limo and sign the gass-free message: Refund!
+
+(B) Share the link with the signed message via any of the ur369 social media channels (publicly or via DM -preferred-).
+
+After the *Refund* task is completed >> the 36.9% of the specific paid-subscription-fee shall arrive to the respective crypto wallet address as soon as possible.
+
+(2) The task to get *Refund* must be completed within 3 days, 6 hours and 9 minutes of the particular fee-subscription payment. Performing the task after the mentioned period would disqualify the crypto wallet address for receiving the /refund.
