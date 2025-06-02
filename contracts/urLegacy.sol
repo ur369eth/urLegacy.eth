@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-
-import "hardhat/console.sol";
-
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
@@ -10,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol"; // Import EnumerableSet from OpenZeppelin
 
 contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -51,7 +48,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         uint256 subscriptionID,
         uint256 timestamp
     );
-    event StableCoinGasFeeTransfered(
+    event ERC20TokenGasFeeTransfered(
         address sender,
         address token,
         uint256 amount,
@@ -125,20 +122,21 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
     address public feeReceiver1 = 0x3162210648CC77ba625bC091c834BDd730fDB9a6; // 43%
     address public feeReceiver2 = 0xD6A43D33dEbE97E86f10870c95BBE45453C0ff79; // 43%
     address public keeperFeeReceiver =
-        0xe4A8855fbF1f49412f63EC4e2E7B487AE3304f79; // 4%
+        0xA2bbB1C384b29bCEc84968735FEb4b09beAfbfE4; // 4%
     address public devAddress = 0x5F7B6950e5A173dDAc168b12c1Fa7fBAFb78e414; // 10%
     uint256 public gasFeeReceiverPercent = 43; // 43%
     uint256 public keeperFeeReceiverPercent = 4; // 4%
     uint256 public devAddressPercent = 10; // 10%
 
     // fee of activation
-    uint public THRESHOLD_TIME_1 = 10 days; // For 1-10 days, user will pay 1 USD
+    uint public THRESHOLD_TIME_1 = 10; // For 1-10 days, user will pay 1 USD
     uint public feeForThresholdTime1 = 1; // 1 USD
-    uint public THRESHOLD_TIME_2 = 20 days; // For 11-20 days, user will pay 2 USD
+    uint public THRESHOLD_TIME_2 = 20; // For 11-20 days, user will pay 2 USD
     uint public feeForThresholdTime2 = 2; // 2 USD
-    uint public THRESHOLD_TIME_3 = 30 days; // For 21-30 days, user will pay 3 USD
+    uint public THRESHOLD_TIME_3 = 30; // For 21-30 days, user will pay 3 USD
     uint public feeForThresholdTime3 = 3; // 3 USD
-    uint public subscriptionFeeCapThresholdDays = 200;
+    uint public MAX_THRESHOLD_TIME = 369; // maximum 369 days
+    uint public dailyFeeRate = 369; // 0.369 USD per day (stored as 369 to avoid floating point)
 
     uint private feeInUSDPerTokenDeposit = 2; // on each token deposit 2 USD will be transfered to fund address used to sent funds to the heir
 
@@ -151,11 +149,14 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
 
     AggregatorV3Interface public priceFeed; // Chainlink ETH/USD Price Feed
 
-    // Set to store allowed stablecoins
-    EnumerableSet.AddressSet private allowedStablecoins; // USDT or any other ERC20 stablecoin contract
-
     // Set to store user addresses
     EnumerableSet.AddressSet private users; // A set to store all unique users who enter the system
+
+    // Mapping to store price feed addresses for different tokens
+    mapping(address => address) public tokenPriceFeeds;
+
+    // Set to store allowed tokens (both stablecoins and other tokens)
+    EnumerableSet.AddressSet private allowedTokens;
 
     struct Subscription {
         uint id;
@@ -196,7 +197,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
     function activateSubscription(
         address _heir,
         string memory _heirName,
-        address _stableCoin,
+        address _paymentToken, // payment token alternate to eth
         uint256 _subscriptionTimeLimit,
         // deposits funds details
         uint256 _ETHDeposited, // eth amount deposited in subscription
@@ -204,7 +205,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         uint256[] calldata _amounts // amounts respective to tokens deposited in subscription
     ) public payable nonReentrant {
         address msgSender = msg.sender;
-        bool payInETH = _stableCoin == address(0);
+        bool payInETH = _paymentToken == address(0);
         bool isDepositInETH = _ETHDeposited > 0;
         uint256 _ETHFeeForTokensDeposit;
         if (_tokens.length > 0) {
@@ -234,11 +235,11 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         newSubscription.activationStatus = true;
         newSubscription.heir = payable(_heir);
 
-        uint256 feeInStableCoin = getStableCoinFee(_subscriptionTimeLimit);
+        uint256 feeInUSD = getStableCoinFee(_subscriptionTimeLimit);
         uint requiredETHFee;
         if (payInETH) {
             // Payment in ETH
-            requiredETHFee = calculateETHFee(feeInStableCoin);
+            requiredETHFee = calculateETHFee(feeInUSD);
             uint totalFee = requiredETHFee +
                 _ETHDeposited +
                 _ETHFeeForTokensDeposit;
@@ -256,68 +257,64 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
                 block.timestamp
             );
         } else {
-            // Payment in stablecoin (USDT or any other ERC20)
+            // Payment in token (modified logic)
             require(
-                allowedStablecoins.contains(_stableCoin),
-                "Incorrect stablecoin address"
+                isAllowedToken(_paymentToken),
+                "Token not allowed for payment"
             );
 
-            // Retrieve token decimals dynamically
-            uint8 decimals = IERC20Metadata(_stableCoin).decimals(); // IERC20Metadata has the decimals() method
+            // Calculate required token amount
+            uint256 requiredTokenAmount = calculateTokenFee(
+                feeInUSD,
+                _paymentToken
+            );
 
-            // Adjust the required fee and gas fee based on token decimals
-            uint adjustedFeeInStableCoin = feeInStableCoin /
-                (10 ** (18 - decimals));
-
-            // transfer the fee to the respective addresses
-            // -----------------------------
-            // 43% to each feeReceiver1 & feeReceiver2
-            // 4% to keeper Fee Transfer Address
-            // 10% to dev Address
-            // -----------------------------
-            uint _feeReceiversAmount = (adjustedFeeInStableCoin *
-                gasFeeReceiverPercent) / 100; // 43%
+            // Transfer tokens to fee receivers
+            uint256 feeReceiversAmount = (requiredTokenAmount *
+                gasFeeReceiverPercent) / 100;
             require(
-                IERC20(_stableCoin).transferFrom(
+                IERC20(_paymentToken).transferFrom(
                     msgSender,
                     feeReceiver1,
-                    _feeReceiversAmount
+                    feeReceiversAmount
                 ),
-                "Stablecoin transfer failed for gas fee"
+                "Token transfer failed for gas fee"
             );
             require(
-                IERC20(_stableCoin).transferFrom(
+                IERC20(_paymentToken).transferFrom(
                     msgSender,
                     feeReceiver2,
-                    _feeReceiversAmount
+                    feeReceiversAmount
                 ),
-                "Stablecoin transfer failed for gas fee"
-            );
-            uint _keeperFeeAmount = (adjustedFeeInStableCoin *
-                keeperFeeReceiverPercent) / 100;
-            require(
-                IERC20(_stableCoin).transferFrom(
-                    msgSender,
-                    keeperFeeReceiver,
-                    _keeperFeeAmount
-                ),
-                "Stablecoin transfer failed for gas fee"
-            );
-            uint _remaining = adjustedFeeInStableCoin -
-                (_feeReceiversAmount * 2 + _keeperFeeAmount); // remaining 10%
-            require(
-                IERC20(_stableCoin).transferFrom(
-                    msgSender,
-                    devAddress,
-                    _remaining
-                ),
-                "Stablecoin transfer failed for gas fee"
+                "Token transfer failed for gas fee"
             );
 
-            emit StableCoinGasFeeTransfered(
+            uint256 keeperFeeAmount = (requiredTokenAmount *
+                keeperFeeReceiverPercent) / 100;
+            require(
+                IERC20(_paymentToken).transferFrom(
+                    msgSender,
+                    keeperFeeReceiver,
+                    keeperFeeAmount
+                ),
+                "Token transfer failed for gas fee"
+            );
+
+            uint256 remaining = requiredTokenAmount -
+                (feeReceiversAmount * 2 + keeperFeeAmount);
+            require(
+                IERC20(_paymentToken).transferFrom(
+                    msgSender,
+                    devAddress,
+                    remaining
+                ),
+                "Token transfer failed for gas fee"
+            );
+
+            emit ERC20TokenGasFeeTransfered(
                 msgSender,
-                _stableCoin,
-                adjustedFeeInStableCoin,
+                _paymentToken,
+                requiredTokenAmount,
                 subscriptionCounter,
                 block.timestamp
             );
@@ -431,7 +428,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
             _subscriptionTimeLimit,
             _heir,
             payInETH,
-            _stableCoin
+            _paymentToken
         );
     }
 
@@ -629,7 +626,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
 
     // Renew subscription (pay in either ETH or stablecoin)
     function renewSubscription(
-        address _stableCoin,
+        address _paymentToken, // Changed from _stableCoin to _paymentToken
         uint256 _subscriptionId,
         uint256 _subscriptionTimeLimit
     ) public payable nonReentrant {
@@ -642,22 +639,17 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         ];
         require(getSubscriptionActiveStatus(_subscriptionId), "Time Elapsed");
 
-        uint256 feeInStableCoin = getStableCoinFee(_subscriptionTimeLimit);
+        uint256 feeInUSD = getStableCoinFee(_subscriptionTimeLimit);
+
         if (payInETH) {
-            uint256 requiredFee = calculateETHFee(feeInStableCoin);
+            // Existing ETH payment logic
+            uint256 requiredFee = calculateETHFee(feeInUSD);
             require(msg.value >= requiredFee, "Incorrect ETH subscription fee");
 
-            // Refund excess ETH
             if (msg.value > requiredFee) {
                 payable(msgSender).transfer(msg.value - requiredFee);
             }
 
-            // transfer tokens deposits fee in ETH to fund address
-            // -----------------------------
-            // 43% to each feeReceiver1 & feeReceiver2
-            // 4% to keeper Fee Transfer Address
-            // 10% to dev Address
-            // -----------------------------
             uint _feeReceiversAmount = (requiredFee * gasFeeReceiverPercent) /
                 100;
             payable(feeReceiver1).transfer(_feeReceiversAmount);
@@ -666,8 +658,9 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
                 100;
             payable(keeperFeeReceiver).transfer(_keeperFeeAmount);
             uint _remaining = requiredFee -
-                (_feeReceiversAmount * 2 + _keeperFeeAmount); // remaining 10%
+                (_feeReceiversAmount * 2 + _keeperFeeAmount);
             payable(devAddress).transfer(_remaining);
+
             emit EthGasFeeTransfered(
                 msgSender,
                 requiredFee,
@@ -675,73 +668,67 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
                 block.timestamp
             );
         } else {
-            // Payment in stablecoin (USDT or any other ERC20)
+            // New token payment logic
             require(
-                allowedStablecoins.contains(_stableCoin),
-                "Incorrect stablecoin address"
+                isAllowedToken(_paymentToken),
+                "Token not allowed for payment"
             );
-            // Retrieve token decimals dynamically
-            uint8 decimals = IERC20Metadata(_stableCoin).decimals(); // IERC20Metadata has the decimals() method
 
-            // Adjust the required fee and gas fee based on token decimals
-            uint adjustedFeeInStableCoin = feeInStableCoin /
-                (10 ** (18 - decimals));
+            uint256 requiredTokenAmount = calculateTokenFee(
+                feeInUSD,
+                _paymentToken
+            );
 
-            // transfer the fee to the respective addresses
-            // -----------------------------
-            // 43% to each feeReceiver1 & feeReceiver2
-            // 4% to keeper Fee Transfer Address
-            // 10% to dev Address
-            // -----------------------------
-            uint _feeReceiversAmount = (adjustedFeeInStableCoin *
-                gasFeeReceiverPercent) / 100; // 43%
+            uint256 feeReceiversAmount = (requiredTokenAmount *
+                gasFeeReceiverPercent) / 100;
             require(
-                IERC20(_stableCoin).transferFrom(
+                IERC20(_paymentToken).transferFrom(
                     msgSender,
                     feeReceiver1,
-                    _feeReceiversAmount
+                    feeReceiversAmount
                 ),
-                "Stablecoin transfer failed for gas fee"
+                "Token transfer failed for gas fee"
             );
             require(
-                IERC20(_stableCoin).transferFrom(
+                IERC20(_paymentToken).transferFrom(
                     msgSender,
                     feeReceiver2,
-                    _feeReceiversAmount
+                    feeReceiversAmount
                 ),
-                "Stablecoin transfer failed for gas fee"
-            );
-            uint _keeperFeeAmount = (adjustedFeeInStableCoin *
-                keeperFeeReceiverPercent) / 100;
-            require(
-                IERC20(_stableCoin).transferFrom(
-                    msgSender,
-                    keeperFeeReceiver,
-                    _keeperFeeAmount
-                ),
-                "Stablecoin transfer failed for gas fee"
-            );
-            uint _remaining = adjustedFeeInStableCoin -
-                (_feeReceiversAmount * 2 + _keeperFeeAmount); // remaining 10%
-            require(
-                IERC20(_stableCoin).transferFrom(
-                    msgSender,
-                    devAddress,
-                    _remaining
-                ),
-                "Stablecoin transfer failed for gas fee"
+                "Token transfer failed for gas fee"
             );
 
-            emit StableCoinGasFeeTransfered(
+            uint256 keeperFeeAmount = (requiredTokenAmount *
+                keeperFeeReceiverPercent) / 100;
+            require(
+                IERC20(_paymentToken).transferFrom(
+                    msgSender,
+                    keeperFeeReceiver,
+                    keeperFeeAmount
+                ),
+                "Token transfer failed for gas fee"
+            );
+
+            uint256 remaining = requiredTokenAmount -
+                (feeReceiversAmount * 2 + keeperFeeAmount);
+            require(
+                IERC20(_paymentToken).transferFrom(
+                    msgSender,
+                    devAddress,
+                    remaining
+                ),
+                "Token transfer failed for gas fee"
+            );
+
+            emit ERC20TokenGasFeeTransfered(
                 msgSender,
-                _stableCoin,
-                adjustedFeeInStableCoin,
+                _paymentToken,
+                requiredTokenAmount,
                 subscriptionCounter,
                 block.timestamp
             );
         }
 
-        // Reset the subscription details
         sub.subscriptionTimeLimit =
             sub.subscriptionTimeLimit +
             _subscriptionTimeLimit;
@@ -752,7 +739,7 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
             block.timestamp,
             _subscriptionTimeLimit,
             payInETH,
-            _stableCoin
+            _paymentToken
         );
     }
 
@@ -786,35 +773,65 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         emit HeirChanged(msgSender, _subscriptionId, block.timestamp, _newHeir);
     }
 
-    // Add allowed stablecoin
-    function addAllowedStablecoin(
-        address[] memory _stablecoins
+    // Add allowed token with its price feed
+    function addAllowedToken(
+        address _token,
+        address _priceFeed
     ) public onlyOwner {
-        require(_stablecoins.length != 0, "invalid length");
+        require(_token != address(0), "Invalid token address");
+        require(_priceFeed != address(0), "Invalid price feed address");
 
-        for (uint i = 0; i < _stablecoins.length; i++) {
-            address token = _stablecoins[i];
-            require(
-                !isAllowedStablecoin(token),
-                "SubscriptionContract: Stablecoin already allowed"
-            );
-            allowedStablecoins.add(token);
+        // Check if token is already allowed
+        require(!isAllowedToken(_token), "Token already allowed");
+
+        // Add token to allowed tokens set
+        allowedTokens.add(_token);
+
+        // Set price feed for the token
+        tokenPriceFeeds[_token] = _priceFeed;
+    }
+
+    // Remove allowed token
+    function removeAllowedToken(address _token) public onlyOwner {
+        require(isAllowedToken(_token), "Token not allowed");
+
+        // Remove token from allowed tokens set
+        allowedTokens.remove(_token);
+
+        // Remove price feed mapping
+        delete tokenPriceFeeds[_token];
+    }
+
+    // Add multiple allowed tokens with their price feeds
+    function addAllowedTokens(
+        address[] calldata _tokens,
+        address[] calldata _priceFeeds
+    ) public onlyOwner {
+        require(_tokens.length == _priceFeeds.length, "Arrays length mismatch");
+
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            require(_tokens[i] != address(0), "Invalid token address");
+            require(_priceFeeds[i] != address(0), "Invalid price feed address");
+            require(!isAllowedToken(_tokens[i]), "Token already allowed");
+
+            // Add token to allowed tokens set
+            allowedTokens.add(_tokens[i]);
+
+            // Set price feed for the token
+            tokenPriceFeeds[_tokens[i]] = _priceFeeds[i];
         }
     }
 
-    // Remove allowed stablecoin
-    function removeAllowedStablecoin(
-        address[] memory _stablecoins
-    ) public onlyOwner {
-        require(_stablecoins.length != 0, "Invalid length");
-        for (uint i = 0; i < _stablecoins.length; i++) {
-            address token = _stablecoins[i];
-            // check if it is valid stablecoin
-            require(
-                isAllowedStablecoin(token),
-                "SubscriptionContract: Stablecoin not allowed"
-            );
-            allowedStablecoins.remove(token);
+    // Remove multiple allowed tokens
+    function removeAllowedTokens(address[] calldata _tokens) public onlyOwner {
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            require(isAllowedToken(_tokens[i]), "Token not allowed");
+
+            // Remove token from allowed tokens set
+            allowedTokens.remove(_tokens[i]);
+
+            // Remove price feed mapping
+            delete tokenPriceFeeds[_tokens[i]];
         }
     }
 
@@ -893,11 +910,9 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         feeForThresholdTime3 = _feeForThresholdTime3;
     }
 
-    // Admin function to change subscriptionFeeCapThresholdDays
-    function setSubscriptionFeeCapThresholdDays(
-        uint _subscriptionFeeCapThresholdDays
-    ) public onlyOwner {
-        subscriptionFeeCapThresholdDays = _subscriptionFeeCapThresholdDays;
+    // Admin function to change feeForThresholdTime3
+    function setMAX_THRESHOLD_TIME(uint _MAX_THRESHOLD_TIME) public onlyOwner {
+        MAX_THRESHOLD_TIME = _MAX_THRESHOLD_TIME;
     }
 
     // Admin function to change fee per Token deposit
@@ -905,6 +920,11 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         uint _feePerTokenDeposit
     ) public onlyOwner {
         feeInUSDPerTokenDeposit = _feePerTokenDeposit;
+    }
+
+    // Admin function to change daily fee rate
+    function setDailyFeeRate(uint _dailyFeeRate) public onlyOwner {
+        dailyFeeRate = _dailyFeeRate;
     }
 
     function performUpkeep(bytes calldata performData) external {
@@ -1034,53 +1054,33 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
         }
     }
 
-    // function to change the subscription seconds into days and then into stable coins according to days
+    /**
+     * @notice Calculates the subscription fee in stablecoin based on the subscription duration.
+     * @param _subscriptionLimitInSeconds The subscription duration in seconds.
+     * @return _feeInStableCoin The calculated fee in stablecoin (1 USD = 1e18).
+     */
     function getStableCoinFee(
         uint256 _subscriptionLimitInSeconds
-    ) public view returns (uint) {
-        uint256 subscriptionDays = _subscriptionLimitInSeconds / 86400;
+    ) public view returns (uint256 _feeInStableCoin) {
+        uint256 subscriptionDays = _subscriptionLimitInSeconds / 86400; // Convert seconds to days
 
-        // Cap the fee at the threshold
-        // If the subscription days exceed the threshold, the fee will be capped at the threshold
-        // ----------------------//
-        // From 1 day to 10 days >> user pays $1 fee
-        // From 10 days to 20 days >> user pays $2 fee
-        // From 20 days to 30 days user pays $3 fee.
-        // After 30 days then the formula for 1$ per day until the 200 days can be applied.
-        // ----------------------//
+        // Determine the fee based on the duration
         if (subscriptionDays <= THRESHOLD_TIME_1) {
-            subscriptionDays = feeForThresholdTime1;
+            _feeInStableCoin = feeForThresholdTime1 * 1e18; // 1-10 days: $1
         } else if (subscriptionDays <= THRESHOLD_TIME_2) {
-            subscriptionDays = feeForThresholdTime2;
+            _feeInStableCoin = feeForThresholdTime2 * 1e18; // 11-20 days: $2
         } else if (subscriptionDays <= THRESHOLD_TIME_3) {
-            subscriptionDays = feeForThresholdTime3;
-        } else if (subscriptionDays > subscriptionFeeCapThresholdDays) {
-            subscriptionDays = subscriptionFeeCapThresholdDays;
+            _feeInStableCoin = feeForThresholdTime3 * 1e18; // 21-30 days: $3
+        } else if (subscriptionDays <= MAX_THRESHOLD_TIME) {
+            // After 30 days, charge dailyFeeRate per additional day i.e. 0.369$ per day
+            uint256 additionalDays = subscriptionDays - THRESHOLD_TIME_3;
+            _feeInStableCoin =
+                feeForThresholdTime3 *
+                1e18 +
+                (((additionalDays * dailyFeeRate) * 1e18) / 1000); // dailyFeeRate per day
+        } else {
+            revert("Invalid Subscription days");
         }
-
-        uint256 feeInStableCoin = subscriptionDays * 1e18;
-        return feeInStableCoin;
-    }
-
-    // Check if a stablecoin is allowed
-    function isAllowedStablecoin(
-        address _stablecoin
-    ) public view returns (bool) {
-        return allowedStablecoins.contains(_stablecoin);
-    }
-
-    // Get the total number of allowed stablecoins
-    function getNumberOfStablecoins() public view returns (uint) {
-        return allowedStablecoins.length();
-    }
-
-    // Get the allowed stablecoins
-    function getAllowedStablecoins()
-        public
-        view
-        returns (address[] memory allowedS)
-    {
-        return allowedStablecoins.values();
     }
 
     // Get the latest price of ETH in USD (used to calculate equivalent ETH for stablecoin fee)
@@ -1319,5 +1319,57 @@ contract urLegacy is Ownable, ReentrancyGuard, AutomationCompatibleInterface {
             subscription.heirName,
             tokensWithBalances
         );
+    }
+
+    // Check if a token is allowed
+    function isAllowedToken(address _token) public view returns (bool) {
+        return allowedTokens.contains(_token);
+    }
+
+    // Get the price feed address for a token
+    function getTokenPriceFeed(address _token) public view returns (address) {
+        return tokenPriceFeeds[_token];
+    }
+
+    // Get all allowed tokens
+    function getAllowedTokens() public view returns (address[] memory) {
+        return allowedTokens.values();
+    }
+
+    // Calculate fee in a specific token
+    function calculateTokenFee(
+        uint256 _feeInUSD,
+        address _token
+    ) public view returns (uint256) {
+        require(isAllowedToken(_token), "Token not allowed");
+
+        // Get price feed for the token
+        address priceFeedAddress = tokenPriceFeeds[_token];
+        require(priceFeedAddress != address(0), "Price feed not set for token");
+
+        // Get token price in USD
+        AggregatorV3Interface _priceFeed = AggregatorV3Interface(
+            priceFeedAddress
+        );
+        (, int price, , , ) = _priceFeed.latestRoundData();
+        require(price > 0, "Invalid price from oracle");
+
+        // Get token decimals
+        uint8 decimals = IERC20Metadata(_token).decimals();
+
+        // Calculate token amount needed
+        // _feeInUSD is in 1e18 (USD with 18 decimals)
+        // price is in 1e8 (USD with 8 decimals)
+        // We need to adjust for both the price feed decimals and token decimals
+        uint256 tokenAmount = (_feeInUSD * 1e8) / uint256(price);
+
+        // Adjust for token decimals
+        if (decimals < 18) {
+            tokenAmount = tokenAmount / (10 ** (18 - decimals));
+        } else if (decimals > 18) {
+            tokenAmount = tokenAmount * (10 ** (decimals - 18));
+        }
+
+        return tokenAmount;
     }
 }

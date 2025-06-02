@@ -1,0 +1,17 @@
+
+Sepolia addresses
+                                   USDT                                              BUSD                                                BTC                                         DAI                                         GHO                                      LINK
+token Addresses = ["0x80366C8502326eDE6B4DCB46fcE7Cc88378Eda07", "0x89b4653F6AAADf86498840d11D05908f0c43ea97",  "0xE59dc311e56333589137705d91902C336faAe594", "0x0E786082fbE524Eb4C9f18A87638FD53Be278519", "0xfC147C5B308b716861aDf1348b311ea4bE1f920f", "0x1c5f29089E3f6E1f2ab90d710F97E4696a03c0b4"]
+
+priceFeeds = ["0x14866185B1962B63C3Ea9E03Bc1da838bab34C19", "0x14866185B1962B63C3Ea9E03Bc1da838bab34C19", "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43", "0x14866185B1962B63C3Ea9E03Bc1da838bab34C19", "0x635A86F9fdD16Ff09A0701C305D3a845F1758b8E", "0xc59E3633BAAC79493d908e63626716e204A45EdF"]
+
+
+
+
+
+
+mainnet deployment tokens
+                                    LINK                                         uniswap                                      AAVE                                                 GHO                                    USR                                            TBTC                                          WBTC                                         CBBTC                                        USDT                                              USDC                                     EIGEN                                              ENS                                          STARKNET                                   alchemix                                       stETH                                
+token Addresses = ["0x514910771af9ca656af840dff83e8264ecf986ca", "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f", "0x66a1e37c9b0eaddca17d3662d6c05f4decf3e110", "0x18084fba666a33d37592fa2633fd49a74dd93a88", "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", "0xdac17f958d2ee523a2206206994597c13d831ec7", "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xec53bF9167f50cDEB3Ae105f56099aaaB9061F83", "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", "0xdbdb4d16eda451d0503b854cf79d55697f90c8df", "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"]
+                                
+priceFeeds =      ["0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c", "0x553303d460EE0afB37EdFf9bE42922D8FF63220e", "0x547a514d5e3769680Ce22B2361c10Ea13619e8a9", "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC", "0x34ad75691e25A8E9b681AAA85dbeB7ef6561B42c", "0x8350b7De6a6a2C1368E7D4Bd968190e13E354297", "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "0x2665701293fCbEB223D11A08D826563EDcCE423A", "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D", "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6", "0xf2917e602C2dCa458937fad715bb1E465305A4A1", "0x5C00128d4d1c2F4f652C267d7bcdD7aC99C16E16", "0x194a9AaF2e0b67c35915cD01101585A33Fe25CAa", "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8"]
